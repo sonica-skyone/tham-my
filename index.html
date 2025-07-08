@@ -1,0 +1,187 @@
+<script type="text/javascript">
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    function filledCell(cell) {
+      return cell !== '' && cell != null;
+    }
+    function loadFileData(filename) {
+    if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+        try {
+            var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+            var firstSheetName = workbook.SheetNames[0];
+            var worksheet = workbook.Sheets[firstSheetName];
+
+            // Convert sheet to JSON to filter blank rows
+            var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+            // Filter out blank rows (rows where all cells are empty, null, or undefined)
+            var filteredData = jsonData.filter(row => row.some(filledCell));
+
+            // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+            var headerRowIndex = filteredData.findIndex((row, index) =>
+              row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+            );
+            // Fallback
+            if (headerRowIndex === -1 || headerRowIndex > 25) {
+              headerRowIndex = 0;
+            }
+
+            // Convert filtered JSON back to CSV
+            var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+            csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+            return csv;
+        } catch (e) {
+            console.error(e);
+            return "";
+        }
+    }
+    return gk_fileData[filename] || "";
+    }
+    </script><!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Thẩm Mỹ</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
+</head>
+<body class="bg-gray-100 flex justify-center items-center min-h-screen p-4">
+<div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl sm:max-w-4xl md:max-w-5xl">
+<h1 class="text-2xl sm:text-3xl font-bold mb-6 text-center">CITY INTERNATIONAL HOSPITAL</h1>
+<form id="reportForm" class="space-y-6">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div>
+      <label class="block text-sm font-medium">PID</label>
+      <input type="text" id="pid" class="w-full border rounded p-3 text-base" required>
+    </div>
+    <div>
+      <label class="block text-sm font-medium">Họ và Tên</label>
+      <input type="text" id="name" class="w-full border rounded p-3 text-base" required>
+    </div>
+    <div>
+      <label class="block text-sm font-medium">Giới Tính</label>
+      <select id="sex" class="w-full border rounded p-3 text-base" required>
+        <option value="Nam">Nam</option>
+        <option value="Nữ">Nữ</option>
+        <option value="Khác">Khác</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-medium">Ngày Sinh</label>
+      <input type="date" id="birthday" class="w-full border rounded p-3 text-base" required>
+    </div>
+  </div>
+  <div>
+    <label class="block text-sm font-medium">Before (max 5)</label>
+    <input type="file" id="beforeImages" accept="image/*" multiple class="w-full border rounded p-3 text-base" required>
+    <p class="text-sm text-gray-500 mt-1">Chọn tối đa 5 hình ảnh</p>
+  </div>
+  <div>
+    <label class="block text-sm font-medium">After (max 5)</label>
+    <input type="file" id="afterImages" accept="image/*" multiple class="w-full border rounded p-3 text-base" required>
+    <p class="text-sm text-gray-500 mt-1">Chọn tối đa 5 hình ảnh</p>
+  </div>
+  <button type="submit" class="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 text-base sm:text-lg">Tạo PDF</button>
+</form>
+</div>
+
+<script>
+document.getElementById('reportForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const pid = document.getElementById('pid').value;
+  const name = document.getElementById('name').value;
+  const sex = document.getElementById('sex').value;
+  const birthday = document.getElementById('birthday').value;
+  const beforeImageFiles = document.getElementById('beforeImages').files;
+  const afterImageFiles = document.getElementById('afterImages').files;
+
+  if (beforeImageFiles.length > 5 || afterImageFiles.length > 5) {
+    alert('Vui lòng chọn tối đa 5 hình ảnh cho mỗi loại (trước và sau).');
+    return;
+  }
+
+  try {
+    const beforeImagePromises = Array.from(beforeImageFiles).map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    const afterImagePromises = Array.from(afterImageFiles).map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    const beforeImages = await Promise.all(beforeImagePromises);
+    const afterImages = await Promise.all(afterImagePromises);
+
+    const beforeImageGrid = [];
+    for (let i = 0; i < beforeImages.length; i += 2) {
+      const row = [
+        { image: beforeImages[i], fit: [200, 200], alignment: 'center' },
+        beforeImages[i + 1] ? { image: beforeImages[i + 1], fit: [200, 200], alignment: 'center' } : { text: '' }
+      ];
+      beforeImageGrid.push(row);
+    }
+
+    const afterImageGrid = [];
+    for (let i = 0; i < afterImages.length; i += 2) {
+      const row = [
+        { image: afterImages[i], fit: [200, 200], alignment: 'center' },
+        afterImages[i + 1] ? { image: afterImages[i + 1], fit: [200, 200], alignment: 'center' } : { text: '' }
+      ];
+      afterImageGrid.push(row);
+    }
+
+    const docDefinition = {
+      content: [
+        { text: 'CITY INTERNATIONAL HOSPITAL', style: 'header', alignment: 'center' },
+        { text: `PID: ${pid}`, style: 'subheader' },
+        { text: `Họ và Tên: ${name}`, style: 'subheader' },
+        { text: `Giới Tính: ${sex}`, style: 'subheader' },
+        { text: `Ngày Sinh: ${birthday}`, style: 'subheader' },
+        { text: 'Before:', style: 'subheader', margin: [0, 20, 0, 10] },
+        beforeImageGrid.length > 0 ? {
+          table: {
+            widths: ['50%', '50%'],
+            body: beforeImageGrid
+          },
+          layout: 'noBorders'
+        } : { text: 'Không có hình ảnh trước', style: 'subheader' },
+        { text: 'After:', style: 'subheader', margin: [0, 20, 0, 10] },
+        afterImageGrid.length > 0 ? {
+          table: {
+            widths: ['50%', '50%'],
+            body: afterImageGrid
+          },
+          layout: 'noBorders'
+        } : { text: 'Không có hình ảnh sau', style: 'subheader' }
+      ],
+      styles: {
+        header: { fontSize: 24, bold: true, margin: [0, 0, 0, 20] },
+        subheader: { fontSize: 16, margin: [0, 5, 0, 5] }
+      },
+      defaultStyle: {
+        font: 'Roboto'
+      }
+    };
+
+    pdfMake.createPdf(docDefinition).download(`Report_${pid}.pdf`);
+  } catch (error) {
+    console.error('Lỗi khi tạo PDF:', error);
+    alert('Đã xảy ra lỗi khi tạo PDF. Vui lòng thử lại.');
+  }
+});
+</script>
+</body>
+</html>
