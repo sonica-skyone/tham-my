@@ -1,44 +1,4 @@
-
-<script type="text/javascript">
-    var gk_isXlsx = false;
-    var gk_xlsxFileLookup = {};
-    var gk_fileData = {};
-    function filledCell(cell) {
-      return cell !== '' && cell != null;
-    }
-    function loadFileData(filename) {
-    if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-        try {
-            var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-            var firstSheetName = workbook.SheetNames[0];
-            var worksheet = workbook.Sheets[firstSheetName];
-
-            // Convert sheet to JSON to filter blank rows
-            var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-            // Filter out blank rows (rows where all cells are empty, null, or undefined)
-            var filteredData = jsonData.filter(row => row.some(filledCell));
-
-            // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-            var headerRowIndex = filteredData.findIndex((row, index) =>
-              row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-            );
-            // Fallback
-            if (headerRowIndex === -1 || headerRowIndex > 25) {
-              headerRowIndex = 0;
-            }
-
-            // Convert filtered JSON back to CSV
-            var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-            csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-            return csv;
-        } catch (e) {
-            console.error(e);
-            return "";
-        }
-    }
-    return gk_fileData[filename] || "";
-    }
-    </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
@@ -51,7 +11,7 @@
 </head>
 <body class="bg-gray-100 flex justify-center items-center min-h-screen p-4">
 <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl sm:max-w-4xl md:max-w-5xl">
-<h1 style="color:#0080A3;" class="text-2xl sm:text-3xl font-bold mb-6 text-center ">CITY INTERNATIONAL HOSPITAL</h1>
+<h1 style="color:#0080A3;" class="text-2xl sm:text-3xl font-bold mb-6 text-center">CITY INTERNATIONAL HOSPITAL</h1>
 <form id="reportForm" class="space-y-6">
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 <div>
@@ -77,12 +37,12 @@
 </div>
 <div>
 <label class="block text-sm font-medium">Before (max 10)</label>
-<input type="file" id="beforeImages" accept="image/*" capture="environment" multiple class="w-full border rounded p-3 text-base">
+<input type="file" id="beforeImages" accept="image/*" multiple class="w-full border rounded p-3 text-base">
 <p class="text-sm text-gray-500 mt-1">Chọn hoặc chụp tối đa 10 hình ảnh</p>
 </div>
 <div>
 <label class="block text-sm font-medium">After (max 10)</label>
-<input type="file" id="afterImages" accept="image/*" capture="environment" multiple class="w-full border rounded p-3 text-base">
+<input type="file" id="afterImages" accept="image/*" multiple class="w-full border rounded p-3 text-base">
 <p class="text-sm text-gray-500 mt-1">Chọn hoặc chụp tối đa 10 hình ảnh</p>
 </div>
 <div class="flex space-x-4">
@@ -288,6 +248,7 @@ document.getElementById('patientInfoForm').reset();
 
 // Patient Info Cancel Button handler
 document.getElementById('patientCancelButton').addEventListener('click', () => {
+document.getElementByಮ
 document.getElementById('patientInfoModal').classList.add('hidden');
 document.getElementById('patientInfoForm').reset();
 });
