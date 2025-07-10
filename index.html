@@ -1,69 +1,5 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Thẩm Mỹ</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
-</head>
-<body class="bg-gray-100 flex justify-center items-center min-h-screen p-4">
-  <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl sm:max-w-4xl md:max-w-5xl">
-    <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-center">CITY INTERNATIONAL HOSPITAL</h1>
-    <form id="reportForm" class="space-y-6">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium">PID</label>
-          <input type="text" id="pid" class="w-full border rounded p-3 text-base" required>
-        </div>
-        <div>
-          <label class="block text-sm font-medium">Họ và Tên</label>
-          <input type="text" id="name" class="w-full border rounded p-3 text-base" required>
-        </div>
-        <div>
-          <label class="block text-sm font-medium">Giới Tính</label>
-          <select id="sex" class="w-full border rounded p-3 text-base" required>
-            <option value="Nam">Nam</option>
-            <option value="Nữ">Nữ</option>
-            <option value="Khác">Khác</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium">Ngày Sinh</label>
-          <input type="date" id="birthday" class="w-full border rounded p-3 text-base" required>
-        </div>
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Before (max 5)</label>
-        <input type="file" id="beforeImages" accept="image/*" multiple class="w-full border rounded p-3 text-base" required>
-        <p class="text-sm text-gray-500 mt-1">Chọn tối đa 5 hình ảnh</p>
-      </div>
-      <div>
-        <label class="block text-sm font-medium">After (max 5)</label>
-        <input type="file" id="afterImages" accept="image/*" multiple class="w-full border rounded p-3 text-base" required>
-        <p class="text-sm text-gray-500 mt-1">Chọn tối đa 5 hình ảnh</p>
-      </div>
-      <button type="submit" class="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 text-base sm:text-lg">Tạo PDF</button>
-    </form>
-  </div>
 
-  <!-- Modal for PDF Preview -->
-  <div id="previewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
-    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-      <h2 class="text-xl font-bold mb-4 text-center">Xem trước PDF</h2>
-      <div id="previewContent" class="space-y-4">
-        <!-- Preview content will be dynamically inserted here -->
-      </div>
-      <div class="mt-6 flex justify-end space-x-4">
-        <button id="cancelButton" class="bg-gray-300 text-black py-2 px-4 rounded-lg hover:bg-gray-400">Hủy</button>
-        <button id="confirmButton" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Tải PDF</button>
-      </div>
-    </div>
-  </div>
-
-  <script type="text/javascript">
-    // Original file loading logic (unchanged)
+<script type="text/javascript">
     var gk_isXlsx = false;
     var gk_xlsxFileLookup = {};
     var gk_fileData = {};
@@ -71,155 +7,442 @@
       return cell !== '' && cell != null;
     }
     function loadFileData(filename) {
-      if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+    if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
         try {
-          var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-          var firstSheetName = workbook.SheetNames[0];
-          var worksheet = workbook.Sheets[firstSheetName];
-          var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-          var filteredData = jsonData.filter(row => row.some(filledCell));
-          var headerRowIndex = filteredData.findIndex((row, index) =>
-            row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-          );
-          if (headerRowIndex === -1 || headerRowIndex > 25) {
-            headerRowIndex = 0;
-          }
-          var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
-          csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-          return csv;
+            var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+            var firstSheetName = workbook.SheetNames[0];
+            var worksheet = workbook.Sheets[firstSheetName];
+
+            // Convert sheet to JSON to filter blank rows
+            var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+            // Filter out blank rows (rows where all cells are empty, null, or undefined)
+            var filteredData = jsonData.filter(row => row.some(filledCell));
+
+            // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+            var headerRowIndex = filteredData.findIndex((row, index) =>
+              row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+            );
+            // Fallback
+            if (headerRowIndex === -1 || headerRowIndex > 25) {
+              headerRowIndex = 0;
+            }
+
+            // Convert filtered JSON back to CSV
+            var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+            csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+            return csv;
         } catch (e) {
-          console.error(e);
-          return "";
+            console.error(e);
+            return "";
         }
-      }
-      return gk_fileData[filename] || "";
     }
-
-    // Function to create image grid for PDF
-    function createImageGrid(images) {
-      const grid = [];
-      for (let i = 0; i < images.length; i += 2) {
-        const row = [
-          { image: images[i], fit: [200, 200], alignment: 'center' },
-          images[i + 1] ? { image: images[i + 1], fit: [200, 200], alignment: 'center' } : { text: '' }
-        ];
-        grid.push(row);
-      }
-      return grid;
+    return gk_fileData[filename] || "";
     }
+    </script><!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Thẩm Mỹ</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body class="bg-gray-100 flex justify-center items-center min-h-screen p-4">
+<div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl sm:max-w-4xl md:max-w-5xl">
+<h1 style="color:#0080A3;" class="text-2xl sm:text-3xl font-bold mb-6 text-center ">CITY INTERNATIONAL HOSPITAL</h1>
+<form id="reportForm" class="space-y-6">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div>
+<label class="block text-sm font-medium">PID</label>
+<input type="text" id="pid" class="w-full border rounded p-3 text-base" required>
+</div>
+<div>
+<label class="block text-sm font-medium">Họ và Tên</label>
+<input type="text" id="name" class="w-full border rounded p-3 text-base" required>
+</div>
+<div>
+<label class="block text-sm font-medium">Giới Tính</label>
+<select id="sex" class="w-full border rounded p-3 text-base" required>
+<option value="Nam">Nam</option>
+<option value="Nữ">Nữ</option>
+<option value="Khác">Khác</option>
+</select>
+</div>
+<div>
+<label class="block text-sm font-medium">Ngày Sinh</label>
+<input type="text" id="birthday" class="w-full border rounded p-3 text-base" placeholder="dd/mm/yyyy" required>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium">Before (max 10)</label>
+<input type="file" id="beforeImages" accept="image/*" capture="environment" multiple class="w-full border rounded p-3 text-base">
+<p class="text-sm text-gray-500 mt-1">Chọn hoặc chụp tối đa 10 hình ảnh</p>
+</div>
+<div>
+<label class="block text-sm font-medium">After (max 10)</label>
+<input type="file" id="afterImages" accept="image/*" capture="environment" multiple class="w-full border rounded p-3 text-base">
+<p class="text-sm text-gray-500 mt-1">Chọn hoặc chụp tối đa 10 hình ảnh</p>
+</div>
+<div class="flex space-x-4">
+<button type="button" id="patientInfoButton" class="w-full bg-green-500 text-white py-3 px-4 rounded-lg hover:bg-green-600 text-base sm:text-lg">Thông Tin Bệnh Nhân</button>
+<button type="submit" class="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 text-base sm:text-lg">Tạo PDF</button>
+</div>
+</form>
+</div>
 
-    // Form submission handler
-    document.getElementById('reportForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+<!-- Modal for PDF Preview -->
+<div id="previewModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+<div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+<h2 class="text-xl font-bold mb-4 text-center">Xem trước PDF</h2>
+<div id="previewContent" class="space-y-4">
+<!-- Preview content will be dynamically inserted here -->
+</div>
+<div class="mt-6 flex justify-end space-x-4">
+<button id="cancelButton" class="bg-gray-300 text-black py-2 px-4 rounded-lg hover:bg-gray-400">Hủy</button>
+<button id="confirmButton" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Tải PDF</button>
+</div>
+</div>
+</div>
 
-      const pid = document.getElementById('pid').value.trim();
-      const name = document.getElementById('name').value.trim();
-      const sex = document.getElementById('sex').value;
-      const birthday = document.getElementById('birthday').value;
-      const beforeImageFiles = document.getElementById('beforeImages').files;
-      const afterImageFiles = document.getElementById('afterImages').files;
+<!-- Modal for Patient Information -->
+<div id="patientInfoModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+<div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+<h2 class="text-xl font-bold mb-4 text-center">Thông Tin Bệnh Nhân</h2>
+<form id="patientInfoForm" class="space-y-4">
+<div>
+<label class="block text-sm font-medium">Họ và Tên <span class="text-red-500">*</span></label>
+<input type="text" id="patientName" class="w-full border rounded p-3 text-base" required>
+</div>
+<div>
+<label class="block text-sm font-medium">Email</label>
+<input type="email" id="patientEmail" class="w-full border rounded p-3 text-base">
+</div>
+<div>
+<label class="block text-sm font-medium">Số Điện Thoại</label>
+<input type="tel" id="patientPhone" class="w-full border rounded p-3 text-base">
+</div>
+<div>
+<label class="block text-sm font-medium">Địa Chỉ</label>
+<input type="text" id="patientAddress" class="w-full border rounded p-3 text-base">
+</div>
+<div>
+<label class="block text-sm font-medium">Ngày Sinh <span class="text-red-500">*</span></label>
+<input type="text" id="patientBirthday" class="w-full border rounded p-3 text-base" placeholder="dd/mm/yyyy" required>
+</div>
+<div>
+<label class="block text-sm font-medium">Giới Tính <span class="text-red-500">*</span></label>
+<select id="patientSex" class="w-full border rounded p-3 text-base" required>
+<option value="Nam">Nam</option>
+<option value="Nữ">Nữ</option>
+<option value="Khác">Khác</option>
+</select>
+</div>
+<div class="flex justify-end space-x-4">
+<button type="button" id="patientCancelButton" class="bg-gray-300 text-black py-2 px-4 rounded-lg hover:bg-gray-400">Hủy</button>
+<button type="submit" id="patientConfirmButton" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">Xác Nhận</button>
+</div>
+</form>
+</div>
+</div>
 
-      if (!pid || !name || !sex || !birthday) {
-        alert('Vui lòng điền đầy đủ thông tin.');
-        return;
-      }
+<script type="text/javascript">
+// Original file loading logic
+var gk_isXlsx = false;
+var gk_xlsxFileLookup = {};
+var gk_fileData = {};
+function filledCell(cell) {
+return cell !== '' && cell != null;
+}
+function loadFileData(filename) {
+if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+try {
+var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+var firstSheetName = workbook.SheetNames[0];
+var worksheet = workbook.Sheets[firstSheetName];
+var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+var filteredData = jsonData.filter(row => row.some(filledCell));
+var headerRowIndex = filteredData.findIndex((row, index) =>
+row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+);
+if (headerRowIndex === -1 || headerRowIndex > 25) {
+headerRowIndex = 0;
+}
+var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+return csv;
+} catch (e) {
+console.error(e);
+return "";
+}
+}
+return gk_fileData[filename] || "";
+}
 
-      if (beforeImageFiles.length > 5 || afterImageFiles.length > 5) {
-        alert('Vui lòng chọn tối đa 5 hình ảnh cho mỗi loại (trước và sau).');
-        return;
-      }
+// Function to format date and time
+function formatDateTime(date) {
+const day = String(date.getDate()).padStart(2, '0');
+const month = String(date.getMonth() + 1).padStart(2, '0');
+const year = date.getFullYear();
+const hours = String(date.getHours()).padStart(2, '0');
+const minutes = String(date.getMinutes()).padStart(2, '0');
+return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
 
-      try {
-        // Read images as Data URLs
-        const beforeImagePromises = Array.from(beforeImageFiles).map(file => {
-          return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = (e) => reject(e);
-            reader.readAsDataURL(file);
-          });
-        });
+// Function to validate and format date input as dd/mm/yyyy
+function validateAndFormatDate(input) {
+const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+if (!regex.test(input)) {
+return null;
+}
+const [_, day, month, year] = input.match(regex);
+const date = new Date(`${year}-${month}-${day}`);
+if (isNaN(date.getTime()) || date.getFullYear() !== parseInt(year)) {
+return null;
+}
+return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+}
 
-        const afterImagePromises = Array.from(afterImageFiles).map(file => {
-          return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = (e) => reject(e);
-            reader.readAsDataURL(file);
-          });
-        });
+// Function to create image grid for PDF with timestamps
+function createImageGrid(images, timestamps) {
+const grid = [];
+for (let i = 0; i < images.length; i += 2) {
+const row = [
+images[i] ? { 
+  stack: [
+    { image: images[i], fit: [200, 200], alignment: 'center' },
+    { text: timestamps[i] || '', fontSize: 10, alignment: 'center', margin: [0, 5, 0, 0] }
+  ]
+} : { text: '' },
+images[i + 1] ? { 
+  stack: [
+    { image: images[i + 1], fit: [200, 200], alignment: 'center' },
+    { text: timestamps[i + 1] || '', fontSize: 10, alignment: 'center', margin: [0, 5, 0, 0] }
+  ]
+} : { text: '' }
+];
+grid.push(row);
+}
+return grid;
+}
 
-        const [beforeImages, afterImages] = await Promise.all([
-          Promise.all(beforeImagePromises),
-          Promise.all(afterImagePromises)
-        ]);
+// Date input validation for main form
+document.getElementById('birthday').addEventListener('input', (e) => {
+let value = e.target.value.replace(/[^0-9\/]/g, '');
+if (value.length === 2 || value.length === 5) {
+value += '/';
+}
+e.target.value = value.slice(0, 10);
+});
 
-        // Create image grids for PDF
-        const beforeImageGrid = createImageGrid(beforeImages);
-        const afterImageGrid = createImageGrid(afterImages);
+// Date input validation for patient info modal
+document.getElementById('patientBirthday').addEventListener('input', (e) => {
+let value = e.target.value.replace(/[^0-9\/]/g, '');
+if (value.length === 2 || value.length === 5) {
+value += '/';
+}
+e.target.value = value.slice(0, 10);
+});
 
-        // PDF document definition
-        const docDefinition = {
-          content: [
-            { text: 'CITY INTERNATIONAL HOSPITAL', style: 'header', alignment: 'center' },
-            { text: `PID: ${pid}`, style: 'subheader' },
-            { text: `Họ và Tên: ${name}`, style: 'subheader' },
-            { text: `Giới Tính: ${sex}`, style: 'subheader' },
-            { text: `Ngày Sinh: ${birthday}`, style: 'subheader' },
-            { text: 'Before:', style: 'subheader', margin: [0, 20, 0, 10] },
-            beforeImageGrid.length > 0 ? {
-              table: { widths: ['50%', '50%'], body: beforeImageGrid },
-              layout: 'noBorders'
-            } : { text: 'Không có hình ảnh trước', style: 'subheader' },
-            { text: 'After:', style: 'subheader', margin: [0, 20, 0, 10] },
-            afterImageGrid.length > 0 ? {
-              table: { widths: ['50%', '50%'], body: afterImageGrid },
-              layout: 'noBorders'
-            } : { text: 'Không có hình ảnh sau', style: 'subheader' }
-          ],
-          styles: {
-            header: { fontSize: 24, bold: true, margin: [0, 0, 0, 20] },
-            subheader: { fontSize: 16, margin: [0, 5, 0, 5] }
-          },
-          defaultStyle: { font: 'Roboto' }
-        };
+// Patient Info Button handler
+document.getElementById('patientInfoButton').addEventListener('click', () => {
+const modal = document.getElementById('patientInfoModal');
+modal.classList.remove('hidden');
+});
 
-        // Populate preview modal
-        const previewContent = document.getElementById('previewContent');
-        previewContent.innerHTML = `
-          <p class="text-lg"><strong>PID:</strong> ${pid}</p>
-          <p class="text-lg"><strong>Họ và Tên:</strong> ${name}</p>
-          <p class="text-lg"><strong>Giới Tính:</strong> ${sex}</p>
-          <p class="text-lg"><strong>Ngày Sinh:</strong> ${birthday}</p>
-          <p class="text-lg font-bold mt-4">Before Images:</p>
-          <div class="grid grid-cols-2 gap-2">
-            ${beforeImages.length > 0 ? beforeImages.map(img => `<img src="${img}" class="w-full h-32 object-contain">`).join('') : '<p>Không có hình ảnh</p>'}
-          </div>
-          <p class="text-lg font-bold mt-4">After Images:</p>
-          <div class="grid grid-cols-2 gap-2">
-            ${afterImages.length > 0 ? afterImages.map(img => `<img src="${img}" class="w-full h-32 object-contain">`).join('') : '<p>Không có hình ảnh</p>'}
-          </div>
-        `;
+// Patient Info Form submission handler
+document.getElementById('patientInfoForm').addEventListener('submit', (e) => {
+e.preventDefault();
 
-        // Show modal
-        const modal = document.getElementById('previewModal');
-        modal.classList.remove('hidden');
+const patientName = document.getElementById('patientName').value.trim();
+const patientEmail = document.getElementById('patientEmail').value.trim();
+const patientPhone = document.getElementById('patientPhone').value.trim();
+const patientAddress = document.getElementById('patientAddress').value.trim();
+const patientBirthday = document.getElementById('patientBirthday').value;
+const patientSex = document.getElementById('patientSex').value;
 
-        // Handle confirm button
-        document.getElementById('confirmButton').onclick = () => {
-          pdfMake.createPdf(docDefinition).download(`Report_${pid}.pdf`);
-          modal.classList.add('hidden');
-        };
+// Validate date format
+const formattedBirthday = validateAndFormatDate(patientBirthday);
+if (!formattedBirthday) {
+alert('Vui lòng nhập ngày sinh theo định dạng dd/mm/yyyy hợp lệ.');
+return;
+}
 
-        // Handle cancel button
-        document.getElementById('cancelButton').onclick = () => {
-          modal.classList.add('hidden');
-        };
-      } catch (error) {
-        console.error('Lỗi khi xử lý:', error);
-        alert('Đã xảy ra lỗi. Vui lòng thử lại.');
-      }
-    });
-  </script>
+if (!patientName || !patientSex) {
+alert('Vui lòng điền đầy đủ các trường bắt buộc (Họ và Tên, Giới Tính, Ngày Sinh).');
+return;
+}
+
+// Update main form with patient info
+document.getElementById('name').value = patientName;
+document.getElementById('sex').value = patientSex;
+document.getElementById('birthday').value = formattedBirthday;
+
+// Close modal
+document.getElementById('patientInfoModal').classList.add('hidden');
+
+// Optionally clear the patient info form
+document.getElementById('patientInfoForm').reset();
+});
+
+// Patient Info Cancel Button handler
+document.getElementById('patientCancelButton').addEventListener('click', () => {
+document.getElementById('patientInfoModal').classList.add('hidden');
+document.getElementById('patientInfoForm').reset();
+});
+
+// Store timestamps for images
+let beforeImageTimestamps = [];
+let afterImageTimestamps = [];
+
+// Capture timestamps when images are selected
+document.getElementById('beforeImages').addEventListener('change', (e) => {
+beforeImageTimestamps = Array.from(e.target.files).map(() => formatDateTime(new Date()));
+});
+
+document.getElementById('afterImages').addEventListener('change', (e) => {
+afterImageTimestamps = Array.from(e.target.files).map(() => formatDateTime(new Date()));
+});
+
+// Form submission handler for PDF generation
+document.getElementById('reportForm').addEventListener('submit', async (e) => {
+e.preventDefault();
+
+const pid = document.getElementById('pid').value.trim();
+const name = document.getElementById('name').value.trim();
+const sex = document.getElementById('sex').value;
+const birthday = document.getElementById('birthday').value;
+
+// Validate date format
+const formattedBirthday = validateAndFormatDate(birthday);
+if (!formattedBirthday) {
+alert('Vui lòng nhập ngày sinh theo định dạng dd/mm/yyyy hợp lệ.');
+return;
+}
+
+const beforeImageFiles = document.getElementById('beforeImages').files;
+const afterImageFiles = document.getElementById('afterImages').files;
+
+if (!pid || !name || !sex) {
+alert('Vui lòng điền đầy đủ thông tin.');
+return;
+}
+
+if (beforeImageFiles.length > 10) {
+alert('Vui lòng chọn hoặc chụp tối đa 10 hình ảnh cho Before.');
+return;
+}
+
+if (afterImageFiles.length > 10) {
+alert('Vui lòng chọn hoặc chụp tối đa 10 hình ảnh cho After.');
+return;
+}
+
+try {
+// Read images as Data URLs
+const beforeImagePromises = Array.from(beforeImageFiles).map(file => {
+return new Promise((resolve, reject) => {
+const reader = new FileReader();
+reader.onload = (e) => resolve(e.target.result);
+reader.onerror = (e) => reject(e);
+reader.readAsDataURL(file);
+});
+});
+
+const afterImagePromises = Array.from(afterImageFiles).map(file => {
+return new Promise((resolve, reject) => {
+const reader = new FileReader();
+reader.onload = (e) => resolve(e.target.result);
+reader.onerror = (e) => reject(e);
+reader.readAsDataURL(file);
+});
+});
+
+const [beforeImages, afterImages] = await Promise.all([
+Promise.all(beforeImagePromises),
+Promise.all(afterImagePromises)
+]);
+
+// Create image grids for PDF with timestamps
+const beforeImageGrid = createImageGrid(beforeImages, beforeImageTimestamps);
+const afterImageGrid = createImageGrid(afterImages, afterImageTimestamps);
+
+// PDF document definition
+const docDefinition = {
+content: [
+{ text: 'CITY INTERNATIONAL HOSPITAL', style: 'header', alignment: 'center', color: "#0080A3" },
+{ text: `Mã Bệnh Nhân / Pid: ${pid}`, style: 'subheader' },
+{ text: `Họ và Tên / Full Name: ${name}`, style: 'subheader' },
+{ text: `Giới tính / Sex: ${sex}`, style: 'subheader' },
+{ text: `Ngày Sinh / Birthday: ${formattedBirthday}`, style: 'subheader' },
+{ text: 'Trước / Before:', style: 'subheader', margin: [0, 20, 0, 10] },
+beforeImageGrid.length > 0 ? {
+  table: { widths: ['50%', '50%'], body: beforeImageGrid },
+  layout: 'noBorders'
+} : { text: 'Không có hình ảnh trước', style: 'subheader' },
+{ text: 'Sau / After:', style: 'subheader', margin: [0, 20, 0, 10] },
+afterImageGrid.length > 0 ? {
+  table: { widths: ['50%', '50%'], body: afterImageGrid },
+  layout: 'noBorders'
+} : { text: 'Không có hình ảnh sau', style: 'subheader' }
+],
+styles: {
+header: { fontSize: 24, bold: true, margin: [0, 0, 0, 20] },
+subheader: { fontSize: 16, margin: [0, 5, 0, 5] }
+},
+defaultStyle: { font: 'Roboto' }
+};
+
+// Populate preview modal
+const previewContent = document.getElementById('previewContent');
+previewContent.innerHTML = `
+<p class="text-lg"><strong>PID:</strong> ${pid}</p>
+<p class="text-lg"><strong>Họ và Tên:</strong> ${name}</p>
+<p class="text-lg"><strong>Giới Tính:</strong> ${sex}</p>
+<p class="text-lg"><strong>Ngày Sinh:</strong> ${formattedBirthday}</p>
+<p class="text-lg font-bold mt-4">Before Images:</p>
+<div class="grid grid-cols-2 gap-2">
+${beforeImages.length > 0 ? beforeImages.map((img, index) => `
+  <div>
+    <img src="${img}" class="w-full h-32 object-contain">
+    <p class="text-sm text-center">${beforeImageTimestamps[index] || ''}</p>
+  </div>
+`).join('') : '<p>Không có hình ảnh</p>'}
+</div>
+<p class="text-lg font-bold mt-4">After Images:</p>
+<div class="grid grid-cols-2 gap-2">
+${afterImages.length > 0 ? afterImages.map((img, index) => `
+  <div>
+    <img src="${img}" class="w-full h-32 object-contain">
+    <p class="text-sm text-center">${afterImageTimestamps[index] || ''}</p>
+  </div>
+`).join('') : '<p>Không có hình ảnh</p>'}
+</div>
+`;
+
+// Show PDF preview modal
+const modal = document.getElementById('previewModal');
+modal.classList.remove('hidden');
+
+// Sanitize PID for filename
+const sanitizedPid = pid.replace(/[^a-zA-Z0-9]/g, '_');
+
+// Handle confirm button
+document.getElementById('confirmButton').onclick = () => {
+pdfMake.createPdf(docDefinition).download(`${sanitizedPid}.pdf`);
+modal.classList.add('hidden');
+};
+
+// Handle cancel button
+document.getElementById('cancelButton').onclick = () => {
+modal.classList.add('hidden');
+};
+} catch (error) {
+console.error('Lỗi khi xử lý:', error);
+alert('Đã xảy ra lỗi. Vui lòng thử lại.');
+}
+});
+</script>
 </body>
 </html>
